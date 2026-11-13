@@ -1,33 +1,44 @@
 # SmartHire AI
 
-SmartHire AI is a recruitment platform that helps companies screen, assess, and manage candidate pipelines.
+SmartHire AI is an AI-powered recruitment platform for managing job pipelines, candidate applications, and resume review workflows.
 
 ## Project structure
 
-- frontend/ - React user interface (future work)
-- backend/ - Express API for authentication, job management and application workflows
-- ai-service/ - Python FastAPI service for deeper candidate insights (future work)
-- database/ - PostgreSQL schema and setup scripts
-- docs/ - project documentation and roadmap
-- tests/ - end-to-end and integration test coverage
+- frontend/ - React user interface for candidates and recruiters
+- backend/ - Express API for auth, jobs, applications, and resume analysis orchestration
+- ai-service/ - Python FastAPI service that scores resumes and suggests match quality
+- database/ - PostgreSQL schema and setup guidance
+- docs/ - project roadmap and technical notes
 
-## Developer 2 backend
+## Final integrated workflow
 
-This branch contains the backend foundation for the platform, including:
+1. Start the AI service:
+   ```bash
+   cd ai-service
+   python -m venv .venv
+   .venv\Scripts\activate
+   pip install -r requirements.txt
+   uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+   ```
+2. Start the backend API:
+   ```bash
+   cd backend
+   npm install
+   npm run dev
+   ```
+3. Start the frontend:
+   ```bash
+   cd frontend
+   npm install
+   npm run dev -- --host 0.0.0.0
+   ```
 
-- JWT authentication and role-based authorization
-- Job posting and retrieval APIs
-- Candidate application flow
-- Resume upload and AI summary analysis
-- PostgreSQL schema for users, jobs and applications
+## Included features
 
-## Getting started
-
-```bash
-cd backend
-npm install
-npm run test
-npm run dev
-```
+- Candidate and recruiter authentication flows
+- Job listing and application management
+- Resume upload and AI assessment integration
+- PostgreSQL-ready database schema
+- Role-based dashboards for candidates and recruiters
 
 A sample `.env.example` file is included in `backend/` for local configuration.

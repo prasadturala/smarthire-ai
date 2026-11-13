@@ -1,0 +1,110 @@
+version: '3.8'
+
+services:
+  # ----------------------------------------------------------------------------
+  # PostgreSQL Database with pgvector support
+  # ----------------------------------------------------------------------------
+  postgres:
+    image: pgvector/pgvector:pg15
+    container_name: smarthire-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-smarthire_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-smarthire_secure_password}
+      POSTGRES_DB: ${POSTGRES_DB:-smarthire_db}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-smarthire_user} -d ${POSTGRES_DB:-smarthire_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - smarthire-network
+
+  # ----------------------------------------------------------------------------
+  # Redis Cache & Message Broker
+  # ----------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: smarthire-redis
+    restart: always
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - smarthire-network
+
+  # ----------------------------------------------------------------------------
+  # Core Backend API Service (FastAPI)
+  # ----------------------------------------------------------------------------
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: smarthire-backend
+    restart: always
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-smarthire_user}:${POSTGRES_PASSWORD:-smarthire_secure_password}@postgres:5432/${POSTGRES_DB:-smarthire_db}
+      - SECRET_KEY=${SECRET_KEY:-smarthire_super_secret_jwt_key_change_in_production_2026}
+      - AI_SERVICE_URL=http://ai-service:8001
+      - REDIS_URL=redis://redis:6379/0
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    volumes:
+      - ./backend/app:/app/app
+    networks:
+      - smarthire-network
+
+  # ----------------------------------------------------------------------------
+  # AI & ML Microservice (FastAPI + LLMs)
+  # ----------------------------------------------------------------------------
+  ai-service:
+    build:
+      context: ./ai-service
+      dockerfile: Dockerfile
+    container_name: smarthire-ai-service
+    restart: always
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    ports:
+      - "${AI_SERVICE_PORT:-8001}:8001"
+    volumes:
+      - ./ai-service/app:/app/app
+    networks:
+      - smarthire-network
+
+  # ----------------------------------------------------------------------------
+  # Frontend Client (React + Vite + Tailwind)
+  # ----------------------------------------------------------------------------
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: smarthire-frontend
+    restart: always
+    ports:
+      - "${PORT:-3000}:80"
+    depends_on:
+      - backend
+      - ai-service
+    networks:
+      - smarthire-network
+
+networks:
+  smarthire-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
