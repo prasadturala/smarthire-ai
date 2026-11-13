@@ -62,6 +62,14 @@ a {
   width: 100%;
 }
 
+.page-loading {
+  min-height: 12rem;
+  display: grid;
+  place-items: center;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
 /* Buttons */
 .btn {
   display: inline-flex;
