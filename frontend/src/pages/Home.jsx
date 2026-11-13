@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Sparkles, ArrowRight, CheckCircle2, ShieldCheck, Zap, Bot, Database } from 'lucide-react';
+import { Sparkles, ArrowRight, Zap, Bot, Database } from 'lucide-react';
 
 export default function Home() {
   return (
@@ -19,15 +19,15 @@ export default function Home() {
           fontWeight: 600,
           marginBottom: '1.25rem'
         }}>
-          <Sparkles size={16} /> Powered by Python FastAPI & Gemini AI
+          <Sparkles size={16} /> Clear, transparent skills insights
         </div>
         
         <h1 style={{ fontSize: '3rem', fontWeight: 800, lineHeight: 1.15, marginBottom: '1.25rem', color: 'var(--text-main)' }}>
-          Hire Top Talent Faster with <span style={{ color: 'var(--primary)' }}>AI-Powered</span> Screening
+          Better matches with <span style={{ color: 'var(--primary)' }}>people-first</span> hiring
         </h1>
         
         <p style={{ fontSize: '1.125rem', color: 'var(--text-muted)', maxWidth: '680px', margin: '0 auto 2rem', lineHeight: 1.6 }}>
-          SmartHire AI bridges candidates and recruiters with automated PDF resume parsing, semantic skill gap analysis, and real-time ATS match scoring.
+          Compare role requirements with resume skills and get clear supporting insights. Candidates and recruiters stay in control of every decision.
         </p>
 
         <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>

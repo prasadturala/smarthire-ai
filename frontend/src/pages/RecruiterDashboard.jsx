@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import { PlusCircle, Users, Briefcase, CheckCircle, Search, Filter, RefreshCw } from 'lucide-react';
-import api from '../services/api';
+import api, { getErrorMessage, getItems } from '../services/api';
 
 export default function RecruiterDashboard() {
-  const user = JSON.parse(localStorage.getItem('user') || '{"name": "Sarah Connor", "email": "recruiter@smarthire.ai"}');
+  const user = JSON.parse(localStorage.getItem('user') || 'null');
   const [candidates, setCandidates] = useState([]);
+  const [activeJobCount, setActiveJobCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [showJobModal, setShowJobModal] = useState(false);
   const [newJob, setNewJob] = useState({
     title: '',
@@ -20,54 +22,37 @@ export default function RecruiterDashboard() {
 
   useEffect(() => {
     fetchCandidates();
+    fetchJobs();
   }, []);
 
   const fetchCandidates = async () => {
+    setError('');
     try {
       const res = await api.get('/applications');
-      setCandidates(res.data);
+      setCandidates(getItems(res.data, 'applications'));
     } catch (err) {
-      console.warn('Demo applicant records loaded:', err);
-      setCandidates([
-        {
-          id: 'app-101',
-          candidateName: 'Alex Mercer',
-          email: 'candidate@smarthire.ai',
-          jobTitle: 'Senior AI / Full-Stack Engineer',
-          matchScore: 92,
-          matchedSkills: ['Python', 'FastAPI', 'React', 'Docker'],
-          missingSkills: ['LangChain'],
-          status: 'screening'
-        },
-        {
-          id: 'app-102',
-          candidateName: 'Emily Watson',
-          email: 'emily.w@example.com',
-          jobTitle: 'Frontend Engineer (React / Next.js)',
-          matchScore: 84,
-          matchedSkills: ['React', 'JavaScript', 'CSS', 'Redux'],
-          missingSkills: ['TypeScript'],
-          status: 'applied'
-        },
-        {
-          id: 'app-103',
-          candidateName: 'David Chen',
-          email: 'dchen@example.com',
-          jobTitle: 'Senior AI / Full-Stack Engineer',
-          matchScore: 61,
-          matchedSkills: ['Python', 'SQL'],
-          missingSkills: ['FastAPI', 'React', 'Docker'],
-          status: 'rejected'
-        }
-      ]);
+      setError(getErrorMessage(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchJobs = async () => {
+    try {
+      const { data } = await api.get('/jobs');
+      setActiveJobCount(getItems(data, 'jobs').length);
+    } catch (err) {
+      setError(getErrorMessage(err));
     }
   };
 
   const handleStatusUpdate = async (id, newStatus) => {
+    setError('');
     try {
       await api.patch(`/applications/${id}/status`, { status: newStatus });
     } catch (err) {
-      console.warn('Backend unavailable, updating local state:', err);
+      setError(getErrorMessage(err));
+      return;
     }
     setCandidates((prev) =>
       prev.map((c) => (c.id === id ? { ...c, status: newStatus } : c))
@@ -78,6 +63,7 @@ export default function RecruiterDashboard() {
 
   const handleCreateJob = async (e) => {
     e.preventDefault();
+    setError('');
     try {
       const payload = {
         ...newJob,
@@ -88,12 +74,14 @@ export default function RecruiterDashboard() {
       setShowJobModal(false);
       setNewJob({ title: '', department: 'Engineering', location: 'Remote', description: '', requirements: '', skills_required: '' });
     } catch (err) {
-      console.warn('Backend unavailable, mock job added:', err);
-      setNotification('Job opening added to active listings!');
-      setShowJobModal(false);
+      setError(getErrorMessage(err));
     }
     setTimeout(() => setNotification(''), 3500);
   };
+  const getMatchScore = (candidate) =>
+    candidate.matchScore ?? candidate.match_score ?? candidate.analysis?.match_score ?? candidate.resumeAnalysis?.match_score;
+  const getMissingSkills = (candidate) =>
+    candidate.missingSkills || candidate.missing_skills || candidate.analysis?.missing_skills || [];
 
   return (
     <div className="main-layout">
@@ -104,7 +92,7 @@ export default function RecruiterDashboard() {
           <div>
             <h1 style={{ fontSize: '1.75rem', fontWeight: 700 }}>Recruiter Talent Hub</h1>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-              Logged in as {user.name} ({user.email})
+              Logged in as {user?.name || user?.email || 'recruiter'}
             </p>
           </div>
           <button onClick={() => setShowJobModal(true)} className="btn btn-primary">
@@ -125,35 +113,33 @@ export default function RecruiterDashboard() {
             {notification}
           </div>
         )}
+        {error && <div role="alert" className="error-message">{error}</div>}
 
         {/* Statistics */}
         <div className="grid-cols-3" style={{ marginBottom: '2rem' }}>
           <div className="card">
             <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', fontWeight: 600 }}>ACTIVE JOBS</div>
-            <div style={{ fontSize: '2rem', fontWeight: 700, marginTop: '0.25rem' }}>4</div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--primary)', marginTop: '0.25rem' }}>2 Open this week</div>
+            <div style={{ fontSize: '2rem', fontWeight: 700, marginTop: '0.25rem' }}>{activeJobCount}</div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--primary)', marginTop: '0.25rem' }}>Open positions</div>
           </div>
           <div className="card">
             <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', fontWeight: 600 }}>TOTAL APPLICANTS</div>
             <div style={{ fontSize: '2rem', fontWeight: 700, marginTop: '0.25rem' }}>{candidates.length}</div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>Screened by Python AI</div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>Applications received</div>
           </div>
           <div className="card">
             <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', fontWeight: 600 }}>SHORTLIST RATE</div>
             <div style={{ fontSize: '2rem', fontWeight: 700, marginTop: '0.25rem', color: 'var(--success)' }}>
               {Math.round((candidates.filter(c => c.status === 'shortlisted').length / (candidates.length || 1)) * 100)}%
             </div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>ATS match &gt; 80%</div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>Marked by your team</div>
           </div>
         </div>
 
         {/* Candidates Table */}
         <div className="card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-            <h2 style={{ fontSize: '1.125rem', fontWeight: 600 }}>Applicant Screening & AI Scores</h2>
-            <Link to="/upload-resume" className="btn btn-secondary btn-sm">
-              Screen Candidate Resume
-            </Link>
+            <h2 style={{ fontSize: '1.125rem', fontWeight: 600 }}>Applications & skills insights</h2>
           </div>
 
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
@@ -168,24 +154,26 @@ export default function RecruiterDashboard() {
               </tr>
             </thead>
             <tbody>
+              {loading && <tr><td colSpan="6" style={{ padding: '1rem' }}>Loading applications...</td></tr>}
+              {!loading && !error && candidates.length === 0 && <tr><td colSpan="6" style={{ padding: '1rem' }}>No applications have been received yet.</td></tr>}
               {candidates.map((c) => (
                 <tr key={c.id} style={{ borderBottom: '1px solid var(--border)' }}>
                   <td style={{ padding: '0.75rem' }}>
-                    <div style={{ fontWeight: 600 }}>{c.candidateName}</div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{c.email}</div>
+                    <div style={{ fontWeight: 600 }}>{c.candidateName || c.candidate?.name || c.user?.name || 'Candidate'}</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{c.email || c.candidate?.email || c.user?.email || ''}</div>
                   </td>
-                  <td style={{ padding: '0.75rem' }}>{c.jobTitle}</td>
+                  <td style={{ padding: '0.75rem' }}>{c.jobTitle || c.job_title || c.job?.title || 'Job application'}</td>
                   <td style={{ padding: '0.75rem' }}>
                     <span style={{
                       fontWeight: 700,
-                      color: c.matchScore >= 80 ? 'var(--success)' : (c.matchScore >= 60 ? 'var(--warning)' : 'var(--danger)')
+                      color: 'var(--primary)'
                     }}>
-                      {c.matchScore}%
+                      {getMatchScore(c) == null ? '—' : `${getMatchScore(c)}%`}
                     </span>
                   </td>
                   <td style={{ padding: '0.75rem' }}>
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                      <strong>Missing:</strong> {c.missingSkills?.join(', ') || 'None'}
+                      <strong>Skills not identified:</strong> {getMissingSkills(c).join(', ') || 'None'}
                     </div>
                   </td>
                   <td style={{ padding: '0.75rem' }}>
@@ -193,7 +181,7 @@ export default function RecruiterDashboard() {
                       c.status === 'shortlisted' ? 'badge-success' :
                       c.status === 'rejected' ? 'badge-danger' : 'badge-warning'
                     }`}>
-                      {c.status}
+                      {c.status || 'submitted'}
                     </span>
                   </td>
                   <td style={{ padding: '0.75rem', textAlign: 'right' }}>

@@ -5,7 +5,13 @@ import { Briefcase, UserCheck, LogOut, FileText, LayoutDashboard, PlusCircle } f
 export default function Navbar() {
   const navigate = useNavigate();
   const token = localStorage.getItem('token');
-  const user = JSON.parse(localStorage.getItem('user') || 'null');
+  let user = null;
+  try {
+    user = JSON.parse(localStorage.getItem('user') || 'null');
+  } catch {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+  }
 
   const handleLogout = () => {
     localStorage.removeItem('token');

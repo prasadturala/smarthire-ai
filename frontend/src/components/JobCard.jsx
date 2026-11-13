@@ -1,8 +1,7 @@
-import React from 'react';
-import { MapPin, DollarSign, Clock, CheckCircle2, ChevronRight } from 'lucide-react';
+import { MapPin, DollarSign, Clock, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
-export default function JobCard({ job, onApply, onScreenResume, isRecruiter = false }) {
+export default function JobCard({ job, isRecruiter = false }) {
   const skills = Array.isArray(job.skills_required) 
     ? job.skills_required 
     : (typeof job.skills_required === 'string' ? JSON.parse(job.skills_required || '[]') : []);
@@ -68,17 +67,17 @@ export default function JobCard({ job, onApply, onScreenResume, isRecruiter = fa
       {/* Actions */}
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem', borderTop: '1px solid var(--border)', paddingTop: '0.75rem' }}>
         {isRecruiter ? (
-          <Link to={`/upload-resume?jobId=${job.id}`} className="btn btn-secondary btn-sm">
-            Screen Candidates
+          <Link to="/recruiter-dashboard" className="btn btn-secondary btn-sm">
+            Review Applications
           </Link>
         ) : (
           <>
             <Link to={`/upload-resume?jobId=${job.id}`} className="btn btn-secondary btn-sm">
               Check Match Score
             </Link>
-            <button onClick={() => onApply && onApply(job)} className="btn btn-primary btn-sm">
-              Apply Now <ChevronRight size={15} />
-            </button>
+            <Link to={`/upload-resume?jobId=${encodeURIComponent(job.id)}`} className="btn btn-primary btn-sm">
+              Apply with Resume <ChevronRight size={15} />
+            </Link>
           </>
         )}
       </div>

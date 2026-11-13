@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { UserPlus, AlertCircle, Check } from 'lucide-react';
-import api from '../services/api';
+import { UserPlus, AlertCircle } from 'lucide-react';
+import api, { getErrorMessage } from '../services/api';
 
 export default function Register() {
   const navigate = useNavigate();
@@ -26,24 +26,12 @@ export default function Register() {
       if (token) {
         localStorage.setItem('token', token);
         localStorage.setItem('user', JSON.stringify(user || formData));
-      }
-
-      if (formData.role === 'recruiter') {
-        navigate('/recruiter-dashboard');
+        navigate(formData.role === 'recruiter' ? '/recruiter-dashboard' : '/candidate-dashboard');
       } else {
-        navigate('/candidate-dashboard');
+        navigate('/login', { state: { registered: true } });
       }
     } catch (err) {
-      console.warn('Backend API registration fallback:', err);
-      // Local fallback for offline testing
-      const mockUser = { ...formData, id: 'u-' + Date.now() };
-      localStorage.setItem('token', 'mock-registered-jwt');
-      localStorage.setItem('user', JSON.stringify(mockUser));
-      if (formData.role === 'recruiter') {
-        navigate('/recruiter-dashboard');
-      } else {
-        navigate('/candidate-dashboard');
-      }
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }

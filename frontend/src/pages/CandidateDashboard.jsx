@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import { FileText, CheckCircle, Clock, AlertTriangle, ArrowUpRight, Upload } from 'lucide-react';
-import api from '../services/api';
+import api, { getErrorMessage, getItems } from '../services/api';
 
 export default function CandidateDashboard() {
-  const user = JSON.parse(localStorage.getItem('user') || '{"name": "Alex Mercer", "email": "candidate@smarthire.ai"}');
+  const user = JSON.parse(localStorage.getItem('user') || 'null');
   const [applications, setApplications] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     fetchApplications();
@@ -16,33 +17,9 @@ export default function CandidateDashboard() {
   const fetchApplications = async () => {
     try {
       const res = await api.get('/applications');
-      setApplications(res.data);
+      setApplications(getItems(res.data, 'applications'));
     } catch (err) {
-      console.warn('Using default demo applications data:', err);
-      setApplications([
-        {
-          id: 'app-1',
-          jobTitle: 'Senior AI / Full-Stack Engineer',
-          department: 'Engineering',
-          company: 'SmartHire Core',
-          appliedAt: '2026-11-12',
-          matchScore: 92,
-          status: 'shortlisted',
-          matchedSkills: ['Python', 'FastAPI', 'React', 'PostgreSQL', 'Docker'],
-          missingSkills: ['LangChain', 'Gemini API']
-        },
-        {
-          id: 'app-2',
-          jobTitle: 'Frontend Engineer (React / Next.js)',
-          department: 'Product UI',
-          company: 'Acme Systems',
-          appliedAt: '2026-11-10',
-          matchScore: 78,
-          status: 'screening',
-          matchedSkills: ['React', 'JavaScript', 'Tailwind CSS'],
-          missingSkills: ['Jest', 'TypeScript']
-        }
-      ]);
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -60,6 +37,12 @@ export default function CandidateDashboard() {
         return <span className="badge badge-primary">Submitted</span>;
     }
   };
+  const getMatchScore = (application) =>
+    application.matchScore ?? application.match_score ?? application.analysis?.match_score ?? application.resumeAnalysis?.match_score;
+  const scoredApplications = applications.filter((application) => getMatchScore(application) != null);
+  const averageMatch = scoredApplications.length
+    ? Math.round(scoredApplications.reduce((total, application) => total + Number(getMatchScore(application)), 0) / scoredApplications.length)
+    : null;
 
   return (
     <div className="main-layout">
@@ -68,7 +51,7 @@ export default function CandidateDashboard() {
         {/* Welcome Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
           <div>
-            <h1 style={{ fontSize: '1.75rem', fontWeight: 700 }}>Welcome back, {user.name}!</h1>
+            <h1 style={{ fontSize: '1.75rem', fontWeight: 700 }}>Welcome back, {user?.name || user?.email || 'there'}!</h1>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
               Track your job applications and AI resume match evaluations
             </p>
@@ -95,9 +78,9 @@ export default function CandidateDashboard() {
           <div className="card">
             <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', fontWeight: 600 }}>AVG MATCH SCORE</div>
             <div style={{ fontSize: '2rem', fontWeight: 700, marginTop: '0.25rem', color: 'var(--primary)' }}>
-              {Math.round(applications.reduce((acc, a) => acc + (a.matchScore || 0), 0) / (applications.length || 1))}%
+              {averageMatch === null ? '—' : `${averageMatch}%`}
             </div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>ATS compatibility</div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>Informational skills match</div>
           </div>
         </div>
 
@@ -110,7 +93,10 @@ export default function CandidateDashboard() {
             </Link>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          {error && <div role="alert" className="error-message">{error}</div>}
+          {loading ? <p>Loading your applications...</p> : applications.length === 0 && !error ? (
+            <p className="text-muted">You have not applied to any roles yet. Explore open positions to get started.</p>
+          ) : !error && <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             {applications.map((app) => (
               <div
                 key={app.id}
@@ -125,13 +111,13 @@ export default function CandidateDashboard() {
                 }}
               >
                 <div>
-                  <div style={{ fontWeight: 600, fontSize: '1rem' }}>{app.jobTitle}</div>
+                  <div style={{ fontWeight: 600, fontSize: '1rem' }}>{app.job?.title || app.jobTitle || app.job_title || 'Job application'}</div>
                   <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-                    {app.department} • Applied on {app.appliedAt}
+                    {app.department || app.job?.department || ''} {app.appliedAt ? `• Applied on ${app.appliedAt}` : ''}
                   </div>
-                  {app.missingSkills && app.missingSkills.length > 0 && (
+                  {(app.missingSkills || app.missing_skills || app.analysis?.missing_skills)?.length > 0 && (
                     <div style={{ fontSize: '0.75rem', color: 'var(--warning)', marginTop: '0.4rem' }}>
-                      Skill Gap identified: {app.missingSkills.join(', ')}
+                      Skills not identified: {(app.missingSkills || app.missing_skills || app.analysis?.missing_skills).join(', ')}
                     </div>
                   )}
                 </div>
@@ -139,8 +125,8 @@ export default function CandidateDashboard() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
                   <div style={{ textAlign: 'right' }}>
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Match Score</div>
-                    <div style={{ fontWeight: 700, fontSize: '1.125rem', color: app.matchScore >= 80 ? 'var(--success)' : 'var(--warning)' }}>
-                      {app.matchScore}%
+                    <div style={{ fontWeight: 700, fontSize: '1.125rem', color: 'var(--primary)' }}>
+                      {getMatchScore(app) == null ? '—' : `${getMatchScore(app)}%`}
                     </div>
                   </div>
                   <div>
@@ -149,7 +135,7 @@ export default function CandidateDashboard() {
                 </div>
               </div>
             ))}
-          </div>
+          </div>}
         </div>
       </div>
     </div>

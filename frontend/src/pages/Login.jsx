@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { LogIn, Mail, Lock, AlertCircle } from 'lucide-react';
-import api from '../services/api';
+import { useLocation, useNavigate, Link } from 'react-router-dom';
+import { AlertCircle } from 'lucide-react';
+import api, { getErrorMessage } from '../services/api';
 
 export default function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -18,46 +19,18 @@ export default function Login() {
     try {
       const response = await api.post('/auth/login', { email, password });
       const { token, user } = response.data;
+      if (!token) throw new Error('The login response did not include an authentication token.');
 
       localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(user));
+      localStorage.setItem('user', JSON.stringify(user || { email, role: 'candidate' }));
 
-      if (user.role === 'recruiter') {
-        navigate('/recruiter-dashboard');
-      } else {
-        navigate('/candidate-dashboard');
-      }
+      const destination = user?.role === 'recruiter' ? '/recruiter-dashboard' : '/candidate-dashboard';
+      navigate(location.state?.returnTo || destination);
     } catch (err) {
-      // If backend is not currently running or returns error, provide intelligent fallback / clear error
-      console.warn('API error, checking demo credentials fallback:', err);
-      if (email === 'candidate@smarthire.ai' && password === 'password123') {
-        const mockUser = { id: 'c-1', email, name: 'Alex Mercer', role: 'candidate' };
-        localStorage.setItem('token', 'mock-jwt-token-candidate');
-        localStorage.setItem('user', JSON.stringify(mockUser));
-        navigate('/candidate-dashboard');
-        return;
-      }
-      if (email === 'recruiter@smarthire.ai' && password === 'password123') {
-        const mockUser = { id: 'r-1', email, name: 'Sarah Connor', role: 'recruiter' };
-        localStorage.setItem('token', 'mock-jwt-token-recruiter');
-        localStorage.setItem('user', JSON.stringify(mockUser));
-        navigate('/recruiter-dashboard');
-        return;
-      }
-      setError(err.response?.data?.message || 'Invalid email or password. Please verify your credentials.');
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
-  };
-
-  const fillDemoCandidate = () => {
-    setEmail('candidate@smarthire.ai');
-    setPassword('password123');
-  };
-
-  const fillDemoRecruiter = () => {
-    setEmail('recruiter@smarthire.ai');
-    setPassword('password123');
   };
 
   return (
@@ -70,6 +43,11 @@ export default function Login() {
           </p>
         </div>
 
+        {location.state?.registered && (
+          <div role="status" style={{ padding: '0.75rem', marginBottom: '1.25rem', backgroundColor: 'var(--success-bg)', color: 'var(--success)', borderRadius: 'var(--radius-sm)', fontSize: '0.875rem' }}>
+            Account created. Sign in to continue.
+          </div>
+        )}
         {error && (
           <div style={{
             display: 'flex',
@@ -123,21 +101,6 @@ export default function Login() {
             {loading ? 'Signing in...' : 'Sign In'}
           </button>
         </form>
-
-        {/* Demo helpers */}
-        <div style={{ marginTop: '1.5rem', borderTop: '1px solid var(--border)', paddingTop: '1.25rem', textAlign: 'center' }}>
-          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.5rem' }}>
-            Quick Demo Login:
-          </span>
-          <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
-            <button onClick={fillDemoCandidate} className="btn btn-secondary btn-sm" type="button">
-              Demo Candidate
-            </button>
-            <button onClick={fillDemoRecruiter} className="btn btn-secondary btn-sm" type="button">
-              Demo Recruiter
-            </button>
-          </div>
-        </div>
 
         <p style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
           Don't have an account?{' '}
