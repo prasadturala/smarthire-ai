@@ -1,3 +1,5 @@
+const axios = require('axios');
+
 const DEFAULT_SKILLS = [
   'javascript',
   'node',
@@ -11,7 +13,29 @@ const DEFAULT_SKILLS = [
   'teamwork'
 ];
 
-const analyzeResume = ({ fileName, text = '' }) => {
+const getAiServiceBaseUrl = () => {
+  const configuredUrl = process.env.AI_SERVICE_URL || 'http://localhost:8000';
+  return configuredUrl.replace(/\/$/, '');
+};
+
+const analyzeResume = async ({ fileName, text = '' }) => {
+  const aiServiceUrl = getAiServiceBaseUrl();
+
+  try {
+    const response = await axios.post(`${aiServiceUrl}/analyze`, {
+      file_name: fileName || 'resume.pdf',
+      text: text || ''
+    }, {
+      timeout: 5000
+    });
+
+    if (response?.data) {
+      return response.data;
+    }
+  } catch (error) {
+    console.warn('AI service unavailable, using local resume analysis fallback.', error.message);
+  }
+
   const normalizedText = (text || '').toLowerCase();
   const matchedSkills = DEFAULT_SKILLS.filter((skill) => normalizedText.includes(skill));
   const missingSkills = DEFAULT_SKILLS.filter((skill) => !normalizedText.includes(skill));

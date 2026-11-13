@@ -43,13 +43,13 @@ const getApplications = (req, res) => {
   return res.status(200).json({ count: applications.length, applications });
 };
 
-const analyzeResumeUpload = (req, res) => {
+const analyzeResumeUpload = async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ message: 'Please upload a resume file.' });
   }
 
   const text = req.file.buffer.toString('utf8');
-  const analysis = analyzeResume({ fileName: req.file.originalname, text });
+  const analysis = await analyzeResume({ fileName: req.file.originalname, text });
 
   return res.status(200).json({
     message: 'Resume analyzed successfully',

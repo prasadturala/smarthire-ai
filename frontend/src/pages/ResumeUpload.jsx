@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import api from '../services/api';
 
 const demoResult = {
   fileName: 'resume.pdf',
@@ -12,20 +13,38 @@ const demoResult = {
 function ResumeUpload() {
   const [analysis, setAnalysis] = useState(null);
   const [file, setFile] = useState(null);
+  const [error, setError] = useState('');
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
 
     if (!file) {
+      setError('Please select a resume file before analyzing.');
       setAnalysis(demoResult);
       return;
     }
 
-    setAnalysis({
-      ...demoResult,
-      fileName: file.name,
-      matchPercentage: 88
-    });
+    const formData = new FormData();
+    formData.append('resume', file);
+
+    try {
+      setError('');
+      const response = await api.post('/api/applications/resume-analysis', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+
+      setAnalysis(response.data.analysis);
+    } catch (requestError) {
+      setAnalysis({
+        ...demoResult,
+        fileName: file.name,
+        matchPercentage: 74,
+        summary: 'The AI pipeline is temporarily unavailable, so the demo analysis is being displayed.'
+      });
+      setError('The backend analysis service is unavailable right now. Showing the local fallback result.');
+    }
   };
 
   return (
@@ -43,6 +62,8 @@ function ResumeUpload() {
             Resume file
             <input type="file" onChange={(event) => setFile(event.target.files[0])} />
           </label>
+
+          {error ? <div className="error-banner">{error}</div> : null}
 
           <button type="submit" className="primary-button full-width">Analyze resume</button>
         </form>
