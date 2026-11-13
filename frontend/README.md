@@ -1,16 +1,29 @@
-# React + Vite
+# SmartHire AI frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+React + Vite client for candidate and recruiter workflows.
 
-Currently, two official plugins are available:
+## Run locally
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+```powershell
+npm install
+Copy-Item .env.example .env
+npm run dev
+```
 
-## React Compiler
+By default, API requests target `http://localhost:5000/api`. Set `VITE_API_URL` in `.env` to override this.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## API contract
 
-## Expanding the Oxlint configuration
+Authenticated requests include `Authorization: Bearer <token>`.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+| Method | Path | Expected request / response |
+| --- | --- | --- |
+| `POST` | `/auth/register` | `{ name, email, password, role }`; response may contain `{ token, user }` |
+| `POST` | `/auth/login` | `{ email, password }`; response contains `{ token, user }` |
+| `GET` | `/jobs` | Array of jobs or `{ jobs: [...] }` |
+| `POST` | `/jobs` | `{ title, department, location, description, requirements, skills_required: string[] }` |
+| `GET` | `/applications` | Array of applications or `{ applications: [...] }` |
+| `POST` | `/applications` | Multipart fields `jobId` and `resume` (PDF); response includes `analysis` or the analysis object |
+| `PATCH` | `/applications/:id/status` | `{ status }` |
+
+Analysis fields are `match_score`, `matched_skills`, and `missing_skills` (camelCase variants are accepted). Scores and skill comparisons are supporting information only; they do not decide hiring outcomes.
